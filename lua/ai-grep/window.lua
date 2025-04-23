@@ -1,0 +1,5 @@
+-- win_id = vim.api.nvim_open_win(
+--     buffer,
+--     enter,
+--     config
+-- )
