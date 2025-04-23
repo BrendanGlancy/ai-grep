@@ -1,30 +1,14 @@
 local M = {}
-local utils = require('ai-grep.utils')
-local claude = require('ai-grep.claude')
 
 function M.setup(opts)
   opts = opts or {}
-  M.opts = vim.tbl_deep_extend('force', {
-    claude_api_key = vim.env.CLAUDE_API_KEY,
-    model = "claude-3-opus-20240229",
-    telescope = {
-      enabled = true,
-    },
-  }, opts)
-  
-  if M.opts.telescope.enabled then
-    require('ai-grep.telescope').setup(M.opts)
-  end
-end
+  opts.keymaps = opts.keymaps or {}
 
-function M.grep(query, opts)
-  opts = opts or {}
-  opts = vim.tbl_deep_extend('force', M.opts or {}, opts)
-  
-  local project_context = utils.get_project_context()
-  local results = claude.search(project_context, query, opts)
-  
-  return results
+  local key = opts.keymaps.aigrep or "<leader>ag"
+
+  vim.keymap.set("n", key, function()
+    require("ai-grep.ui").start()
+  end, { desc = "AI-Grep (ripgrep search)" })
 end
 
 return M
