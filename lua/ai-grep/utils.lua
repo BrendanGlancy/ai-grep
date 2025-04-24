@@ -4,7 +4,8 @@ function M.get_project_root()
     local current_file = vim.fn.expand('%:p')
     local current_dir = vim.fn.fnamemodify(current_file, ':h')
 
-    local git_root = vim.fn.systemlist('cd ' .. vim.fn.shellescape(current_dir) .. ' && git rev-parse --show-toplevel')[1]
+    local git_root = vim.fn.systemlist('cd ' .. vim.fn.shellescape(current_dir) .. ' && git rev-parse --show-toplevel')
+        [1]
         [1]
     if git_root and vim.v.shell_error == 0 then
         return git_root
@@ -13,13 +14,11 @@ function M.get_project_root()
     return current_dir
 end
 
-function M.get_relevant_files(max_files)
-    max_files = max_files or 50
+function M.get_relevant_files()
     local root = M.get_project_root()
     local cmd = string.format(
-        'cd %s && rg --files --max_files=%d --type-not binary --glob "!{*.lock,*.min.*,node_modules/**,vendor/**,dist/**}"',
-        vim.fn.escape(root, ' '),
-        max_files
+        'cd %s && rg --files --glob "!{*.lock,*.min.*,node_modules/**,vendor/**,dist/**}"',
+        vim.fn.escape(root, ' ')
     )
 
     return vim.fn.systemlist(cmd)
@@ -57,31 +56,27 @@ function M.display_results(results)
     vim.api.nvim_buf_set_keymap(bufnr, 'n', 'q', ':q<CR>', { noremap = true, silent = true })
     vim.api.nvim_buf_set_keymap(bufnr, 'n', '<CR>', [[<cmd>lua require('ai-grep.utils').open_result()<CR>]],
         { noremap = true, silent = true })
+    vim.api.nvim_buf_set_keymap(bufnr, 'n', '<Esc>', ':q<CR>', { noremap = true, silent = true })
 
     return { bufnr = bufnr, win = win }
 end
 
 function M.open_result()
     local line = vim.fn.getline('.')
-    local parts = vim.split(line, ':')
+    local file, lineno, text = line:match("^(.-):(%d+):(.+)$")
 
-    if #parts >= 2 then
-        local file = parts[1]
-        local line_num = tonumber(parts[2])
-
+    if file and lineno then
         vim.cmd('q')
         vim.cmd('edit ' .. file)
-        if line_num then
-            vim.api.nvim_win_set_cursor(0, { line_num, 0 })
-            vim.cmd('normal! zz')
-        end
+        vim.api.nvim_win_set_cursor(0, { tonumber(lineno), 0 })
+        vim.cmd('normal! zz')
     end
 end
 
 function M.rip_grep(query)
     local root = M.get_project_root()
     local cmd = string.format(
-        'cd %s && --vimgrep --no-heading --with-filename --line-number --color never %s',
+        'cd %s && rg --vimgrep --no-heading --with-filename --line-number --color never %s',
         vim.fn.shellescape(root),
         vim.fn.shellescape(query)
     )
@@ -93,7 +88,7 @@ function M.rip_grep(query)
 
     local results = {}
     for _, line in ipairs(lines) do
-        local file, lineno, text = line:match("^(._):(%d+):(.+)$")
+        local file, lineno, col, text = line:match("^(.-):(%d+):(%d+):(.+)$")
         if file and lineno and text then
             table.insert(results, {
                 file = file,
